@@ -107,7 +107,7 @@ function getAverages(snapshot) {
 
     const avgPrice = items.reduce((a,b)=>a+b.price_usd,0) / items.length;
     const avgSales = items.reduce((a,b)=>a+b.sales7d,0) / items.length;
-    const avgAsk   = items.reduce((a,b)=>a+b.ask_count,0) / items.length;
+    const avgAsk   = items.reduce((a,b)=>a+b.ask_count,0);
 
     return {avgPrice, avgSales, avgAsk};
 }
@@ -184,7 +184,7 @@ async function updateCharts() {
 
     askChart = buildChart(
         document.getElementById("askChart"),
-        "🧱 Среднее количество в продаже",
+        "🧱 Количество в продаже",
         {labels, values: askData},
         "#f59e0b"
     );
@@ -195,3 +195,4 @@ updateCharts();
 
 </body>
 </html>
+
