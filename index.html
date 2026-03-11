@@ -1,58 +1,55 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<title>CSGO Market Analytics</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<style>
-body {
-    font-family: Arial;
-    background: #0f172a;
-    color: #e2e8f0;
-    margin: 0;
-    padding: 0;
-}
+    <meta charset="UTF-8">
+    <title>CSGO Market Analytics</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        body {
+            font-family: Arial;
+            background: #0f172a;
+            color: #e2e8f0;
+            margin: 0;
+            padding: 20px;
+            max-width: 1400px;          /* ограничение ширины */
+            margin-left: auto;
+            margin-right: auto;          /* центрирование */
+        }
 
-h1 {
-    text-align: center;
-    margin: 0;
-    padding: 20px 20px 0;
-}
+        h1 {
+            text-align: center;
+            margin: 0 0 20px;
+        }
 
-.controls {
-    text-align: center;
-    margin-bottom: 20px;
-    padding: 0 20px;
-}
+        .controls {
+            text-align: center;
+            margin-bottom: 20px;
+        }
 
-select {
-    padding: 8px;
-    background: #1e293b;
-    color: white;
-    border: 1px solid #334155;
-}
+        select {
+            padding: 8px;
+            background: #1e293b;
+            color: white;
+            border: 1px solid #334155;
+        }
 
-.chart-box {
-    background: #1e293b;
-    padding: 20px;
-    border-radius: 12px;
-    margin: 0 0 20px;
-    width: 100%;
-    box-sizing: border-box;
-    height: 350px;           /* фиксированная высота контейнера */
-    display: flex;
-    flex-direction: column;
-}
+        .chart-box {
+            background: #1e293b;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            height: 600px;               /* фиксированная высота */
+            width: 100%;
+            box-sizing: border-box;
+        }
 
-canvas {
-    display: block;
-    width: 100%;
-    flex: 1;                 /* занимает всю оставшуюся высоту */
-    height: auto;            /* позволяет flex управлять размером */
-}
-</style>
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;                 /* занимает весь контейнер */
+        }
+    </style>
 </head>
-
 <body>
 
 <h1>📊 CSGO Market Analytics</h1>
@@ -80,137 +77,133 @@ canvas {
 </div>
 
 <script>
-const API_KEY = 'AIzaSyDifgZJ9eXtgsmnEML385TpGC4j-MXdUt8';
-const SPREADSHEET_ID = '1bpGUwuJa3FmPiYftfS-Yn7_gQlRpZNuJkFYSQ-d9zcQ';
-const SHEET_NAME = 'Лист3';
+    const API_KEY = 'AIzaSyDifgZJ9eXtgsmnEML385TpGC4j-MXdUt8';
+    const SPREADSHEET_ID = '1bpGUwuJa3FmPiYftfS-Yn7_gQlRpZNuJkFYSQ-d9zcQ';
+    const SHEET_NAME = 'Лист3';
 
-let rawSnapshots = [];
-let priceChart, salesChart, askChart;
+    let rawSnapshots = [];
+    let priceChart, salesChart, askChart;
 
-async function fetchData() {
-    if (rawSnapshots.length > 0) return rawSnapshots;
+    async function fetchData() {
+        if (rawSnapshots.length > 0) return rawSnapshots;
 
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}!A:A?key=${API_KEY}`;
-    const res = await fetch(url);
-    const data = await res.json();
+        const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}!A:A?key=${API_KEY}`;
+        const res = await fetch(url);
+        const data = await res.json();
 
-    rawSnapshots = data.values ? data.values : [];
-    return rawSnapshots;
-}
-
-function filterByTimeframe(data, timeframe) {
-    const now = Date.now();
-    let cutoff;
-
-    switch (timeframe) {
-        case 'week': cutoff = now - 7*24*60*60*1000; break;
-        case '24h': cutoff = now - 24*60*60*1000; break;
-        case 'hour': cutoff = now - 60*60*1000; break;
-        default: return data;
+        rawSnapshots = data.values ? data.values : [];
+        return rawSnapshots;
     }
 
-    return data.filter(row => {
-        try {
-            const obj = JSON.parse(row[0]);
-            return Date.parse(obj.timestamp) >= cutoff;
-        } catch { return false; }
-    });
-}
+    function filterByTimeframe(data, timeframe) {
+        const now = Date.now();
+        let cutoff;
 
-function getAverages(snapshot) {
-    const items = Object.values(snapshot.items);
-
-    const avgPrice = items.reduce((a,b)=>a+b.price_usd,0) / items.length;
-    const avgSales = items.reduce((a,b)=>a+b.sales7d,0);
-    const avgAsk   = items.reduce((a,b)=>a+b.ask_count,0);
-
-    return {avgPrice, avgSales, avgAsk};
-}
-
-function buildChart(ctx, label, data, color) {
-    return new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: data.labels,
-            datasets: [{
-                label: label,
-                data: data.values,
-                borderColor: color,
-                backgroundColor: color + '33',
-                tension: 0.25,
-                fill: true
-            }]
-        },
-        options: {
-            responsive: true,
-            interaction: { intersect: false, mode: 'index' },
-            plugins: {
-                legend: { labels: { color: "#e2e8f0" } }
-            },
-            scales: {
-                x: { ticks: { color: "#94a3b8" } },
-                y: { ticks: { color: "#94a3b8" } }
-            }
+        switch (timeframe) {
+            case 'week': cutoff = now - 7 * 24 * 60 * 60 * 1000; break;
+            case '24h': cutoff = now - 24 * 60 * 60 * 1000; break;
+            case 'hour': cutoff = now - 60 * 60 * 1000; break;
+            default: return data;
         }
-    });
-}
 
-async function updateCharts() {
-    const timeframe = document.getElementById("timeframe").value;
-    const raw = await fetchData();
-    const filtered = filterByTimeframe(raw, timeframe);
+        return data.filter(row => {
+            try {
+                const obj = JSON.parse(row[0]);
+                return Date.parse(obj.timestamp) >= cutoff;
+            } catch { return false; }
+        });
+    }
 
-    const labels = [];
-    const priceData = [];
-    const salesData = [];
-    const askData = [];
+    function getAverages(snapshot) {
+        const items = Object.values(snapshot.items);
 
-    filtered.forEach(row => {
-        try {
-            const snap = JSON.parse(row[0]);
-            labels.push(new Date(snap.timestamp).toLocaleString());
+        const avgPrice = items.reduce((a, b) => a + b.price_usd, 0) / items.length;
+        const avgSales = items.reduce((a, b) => a + b.sales7d, 0);
+        const avgAsk   = items.reduce((a, b) => a + b.ask_count, 0);
 
-            const {avgPrice, avgSales, avgAsk} = getAverages(snap);
+        return { avgPrice, avgSales, avgAsk };
+    }
 
-            priceData.push(avgPrice);
-            salesData.push(avgSales);
-            askData.push(avgAsk);
+    function buildChart(ctx, label, data, color) {
+        return new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: label,
+                    data: data.values,
+                    borderColor: color,
+                    backgroundColor: color + '33',
+                    tension: 0.25,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,   // график подстраивается под размер контейнера
+                interaction: { intersect: false, mode: 'index' },
+                plugins: {
+                    legend: { labels: { color: "#e2e8f0" } }
+                },
+                scales: {
+                    x: { ticks: { color: "#94a3b8" } },
+                    y: { ticks: { color: "#94a3b8" } }
+                }
+            }
+        });
+    }
 
-        } catch {}
-    });
+    async function updateCharts() {
+        const timeframe = document.getElementById("timeframe").value;
+        const raw = await fetchData();
+        const filtered = filterByTimeframe(raw, timeframe);
 
-    if (priceChart) priceChart.destroy();
-    if (salesChart) salesChart.destroy();
-    if (askChart) askChart.destroy();
+        const labels = [];
+        const priceData = [];
+        const salesData = [];
+        const askData = [];
 
-    priceChart = buildChart(
-        document.getElementById("priceChart"),
-        "💰 Средняя цена (USD)",
-        {labels, values: priceData},
-        "#3b82f6"
-    );
+        filtered.forEach(row => {
+            try {
+                const snap = JSON.parse(row[0]);
+                labels.push(new Date(snap.timestamp).toLocaleString());
 
-    salesChart = buildChart(
-        document.getElementById("salesChart"),
-        "📦  Продажи за 7 дней",
-        {labels, values: salesData},
-        "#22c55e"
-    );
+                const { avgPrice, avgSales, avgAsk } = getAverages(snap);
 
-    askChart = buildChart(
-        document.getElementById("askChart"),
-        "🧱 Количество в стакане",
-        {labels, values: askData},
-        "#f59e0b"
-    );
-}
+                priceData.push(avgPrice);
+                salesData.push(avgSales);
+                askData.push(avgAsk);
+            } catch {}
+        });
 
-updateCharts();
+        if (priceChart) priceChart.destroy();
+        if (salesChart) salesChart.destroy();
+        if (askChart) askChart.destroy();
+
+        priceChart = buildChart(
+            document.getElementById("priceChart"),
+            "💰 Средняя цена (USD)",
+            { labels, values: priceData },
+            "#3b82f6"
+        );
+
+        salesChart = buildChart(
+            document.getElementById("salesChart"),
+            "📦 Продажи за 7 дней",
+            { labels, values: salesData },
+            "#22c55e"
+        );
+
+        askChart = buildChart(
+            document.getElementById("askChart"),
+            "🧱 Количество в стакане",
+            { labels, values: askData },
+            "#f59e0b"
+        );
+    }
+
+    updateCharts();
 </script>
 
 </body>
 </html>
-
-
-
-
