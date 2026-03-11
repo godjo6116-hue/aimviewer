@@ -10,30 +10,40 @@ body {
     background: #0f172a;
     color: #e2e8f0;
     margin: 0;
-    padding: 20px;
+    padding: 0;                     /* убрали внешний отступ */
 }
+
 h1 {
     text-align: center;
-    margin-bottom: 30px;
+    margin: 0;
+    padding: 20px 20px 0;           /* отступы сверху и по бокам */
 }
+
 .controls {
     text-align: center;
     margin-bottom: 20px;
+    padding: 0 20px;                /* отступы по бокам */
 }
+
 select {
     padding: 8px;
     background: #1e293b;
     color: white;
     border: 1px solid #334155;
 }
+
 .chart-box {
     background: #1e293b;
     padding: 20px;
     border-radius: 12px;
-    margin-bottom: 30px;
+    margin: 0 0 20px;               /* убрали горизонтальные margin */
+    width: 100%;                    /* явно задаём ширину */
+    box-sizing: border-box;          /* padding не увеличивает общую ширину */
 }
+
 canvas {
     height: 300px !important;
+    width: 100% !important;          /* растягиваем canvas на всю ширину родителя */
 }
 </style>
 </head>
@@ -195,5 +205,6 @@ updateCharts();
 
 </body>
 </html>
+
 
 
